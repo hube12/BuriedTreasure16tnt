@@ -1,0 +1,43 @@
+
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+    google()
+    maven {
+        url "https://jitpack.io"
+    }
+    maven {
+        url "https://maven.latticg.com/"
+    }
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
+}
+dependencies {
+    implementation('com.github.hube12:SEED:master-SNAPSHOT')
+
+    testImplementation('com.github.KaptainWutax:ChunkRandomReversal:3fc82aab792d811fb296dcc28fe7177ac80c31f0') { transitive = false }
+    implementation('com.seedfinding:latticg:1.05')
+    implementation('one.util:streamex:0.7.3')
+    // Use JUnit Jupiter API for testing.
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.1'
+
+    // Use JUnit Jupiter Engine for testing.
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    // This dependency is used by the application.
+    implementation 'com.google.guava:guava:30.0-jre'
+}
+
+application {
+    // Define the main class for the application.
+    mainClass = 'BuriedTreasure16tnt.App'
+}
+
+tasks.named('test') {
+    // Use junit platform for unit tests.
+    useJUnitPlatform()
+}
