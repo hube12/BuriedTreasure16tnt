@@ -17,7 +17,7 @@ repositories {
     }
 }
 dependencies {
-    implementation('com.github.hube12:SEED:master-SNAPSHOT')
+    implementation('com.github.hube12:SEED:b80304e54c')
 
     testImplementation('com.github.KaptainWutax:ChunkRandomReversal:3fc82aab792d811fb296dcc28fe7177ac80c31f0') { transitive = false }
     implementation('com.seedfinding:latticg:1.05')

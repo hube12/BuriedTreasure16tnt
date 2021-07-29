@@ -45,7 +45,7 @@ public class App {
 
 	public static void processLootSeeds(long lootSeed) {
 		MCVersion version = MCVersion.v1_16_5;
-		long seed = 248181910139671L ^ LCG.JAVA.multiplier;
+		long seed = lootSeed ^ LCG.JAVA.multiplier;
 		List<Long> preLongSeeds = NextLongReverser.getSeeds(seed);
 
 		BuriedTreasure buriedTreasure = new BuriedTreasure(version);
@@ -65,17 +65,16 @@ public class App {
 						int chunkX = cx;
 						int chunkZ = cz;
 						if (p != null) {
-							StructureSeed.getWorldSeeds(s).asStream().boxed().sequential().forEach(ws -> {
+							StructureSeed.getWorldSeeds(s).asStream().boxed().parallel().forEach(ws -> {
 								GenerationContext.Context context = GenerationContext.getContext(ws, OVERWORLD, version);
 								if (buriedTreasure.canSpawn(chunkX, chunkZ, context.getBiomeSource())) {
 									Generator generator = Generators.get(buriedTreasure.getClass()).create(version);
 									generator.generate(context.getGenerator(), chunkX, chunkZ);
-									List<ChestContent> loots = buriedTreasure.getLoot(s, generator, rand, false);
+									List<ChestContent> loots = buriedTreasure.getLoot(s, generator, false);
 									assert loots.size() == 1;
-									if (loots.get(0).containsAtLeast(Items.TNT, 16)) {
+									if (!loots.get(0).containsAtLeast(Items.TNT, 16)) {
 										System.err.println("Error " + loots + " " + lootSeed + " " + p);
 									}
-									System.out.println(p.toBlockPos() + " " + ws);
 								}
 							});
 						}
@@ -85,7 +84,7 @@ public class App {
 		}
 	}
 
-	public static void main(String[] args) {
+	public static List<Long> makeLootSeeds() {
 		List<Long> lootSeeds = getAllCorrectLootSeeds();
 		try {
 			File file = new File("seeds.txt");
@@ -101,6 +100,14 @@ public class App {
 		} catch (IOException e) {
 			System.out.println("An error occurred.");
 			e.printStackTrace();
+		}
+		return lootSeeds;
+	}
+
+	public static void main(String[] args) {
+		List<Long> lootSeeds = makeLootSeeds();
+		for (Long lootSeed : lootSeeds) {
+			processLootSeeds(lootSeed);
 		}
 	}
 }
