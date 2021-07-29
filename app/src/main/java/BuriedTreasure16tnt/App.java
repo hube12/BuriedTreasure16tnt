@@ -22,14 +22,14 @@ import mjtb49.hashreversals.ChunkRandomReverser;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
+import java.nio.channels.FileLock;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static kaptainwutax.mcutils.state.Dimension.OVERWORLD;
 
 public class App {
-	public static List<Long> getAllCorrectLootSeeds() {
+	public static List<Long> getAllCorrectLootSeeds(FileWriter fileWriter) {
 		DynamicProgram dynamicProgram = DynamicProgram.create(LCG.JAVA);
 		// Nothing on First Roll (heart of sea)
 		// Second roll should be 8 on nextInt(8-5+1=4)+5
@@ -41,6 +41,15 @@ public class App {
 
 		return dynamicProgram.reverse().boxed().parallel()
 				.peek(System.out::println)
+				.peek(ls->{
+					synchronized (fileWriter){
+						try {
+							fileWriter.write(ls.toString());
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				})
 				.collect(Collectors.toList());
 	}
 
@@ -53,8 +62,8 @@ public class App {
 		BuriedTreasure buriedTreasure = new BuriedTreasure(version);
 		ChunkRand rand = new ChunkRand();
 		int rs = buriedTreasure.getSpacing();
-		if (fileWriter!=null){
-			System.out.println("Processing "+lootSeed);
+		if (fileWriter != null) {
+			System.out.println("Processing " + lootSeed);
 		}
 		for (long preLongSeed : preLongSeeds) {
 			long popSeed = ChunkRandomReverser.reverseDecoratorSeed(preLongSeed ^ LCG.JAVA.multiplier, 1, 3, version);
@@ -89,6 +98,7 @@ public class App {
 									System.out.printf("%d /tp @p %d ~ %d\n", worldSeed, chunkX * 16 + 9, chunkZ * 16 + 9);
 								}
 							}
+							fileWriter.flush();
 						}
 					}
 				}
@@ -97,15 +107,16 @@ public class App {
 	}
 
 	public static List<Long> makeLootSeeds() {
-		List<Long> lootSeeds = getAllCorrectLootSeeds();
 		try {
 			File file = new File("seeds.txt");
 			if (file.createNewFile()) {
 				System.out.println("File created: " + file.getName());
 				FileWriter fileWriter = new FileWriter(file);
+				List<Long> lootSeeds = getAllCorrectLootSeeds(fileWriter);
 				for (Long seed : lootSeeds) {
 					fileWriter.write(seed + "\n");
 				}
+				return lootSeeds;
 			} else {
 				System.out.println("File already exists.");
 			}
@@ -113,7 +124,7 @@ public class App {
 			System.out.println("An error occurred.");
 			e.printStackTrace();
 		}
-		return lootSeeds;
+		return null;
 	}
 
 	public static void makeWorldSeeds(List<Long> lootSeeds) {
@@ -125,6 +136,8 @@ public class App {
 				for (Long lootSeed : lootSeeds) {
 					processLootSeeds(lootSeed, fileWriter);
 				}
+				fileWriter.flush();
+				fileWriter.close();
 			} else {
 				System.out.println("File already exists.");
 			}
@@ -136,6 +149,7 @@ public class App {
 
 	public static void main(String[] args) {
 		List<Long> lootSeeds = makeLootSeeds();
+		if (lootSeeds==null)return;
 //		Long[] ls = new Long[] {
 //				202208505420139L,
 //				60774302473920L,
