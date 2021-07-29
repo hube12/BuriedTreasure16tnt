@@ -1,4 +1,9 @@
+# Buried Treasure 16 tnt loots
+
+How to crack efficiently for 16 tnt buried treasure
+
 Some Loot seeds:
+```md
 202208505420139
 60774302473920
 61075554840860
@@ -10,5 +15,8 @@ Some Loot seeds:
 64347933736715
 150850724118166
 151931532504126
+```
 
-See WorldSeed.txt for world seeds
+See worldseeds.txt for world seeds
+
+![Image](https://cdn.discordapp.com/attachments/584121781355282454/870381145173401610/unknown.png)

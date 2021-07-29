@@ -6,7 +6,7 @@ package BuriedTreasure16tnt;
 import com.seedfinding.latticg.reversal.DynamicProgram;
 import com.seedfinding.latticg.reversal.calltype.java.JavaCalls;
 import com.seedfinding.latticg.util.LCG;
-import kaptainwutax.featureutils.GenerationContext;
+import kaptainwutax.biomeutils.source.BiomeSource;
 import kaptainwutax.featureutils.loot.ChestContent;
 import kaptainwutax.featureutils.loot.item.Items;
 import kaptainwutax.featureutils.structure.BuriedTreasure;
@@ -22,6 +22,7 @@ import mjtb49.hashreversals.ChunkRandomReverser;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,7 +44,8 @@ public class App {
 				.collect(Collectors.toList());
 	}
 
-	public static void processLootSeeds(long lootSeed) {
+	public static void processLootSeeds(long lootSeed, FileWriter fileWriter) throws IOException {
+		int range = 5;
 		MCVersion version = MCVersion.v1_16_5;
 		long seed = lootSeed ^ LCG.JAVA.multiplier;
 		List<Long> preLongSeeds = NextLongReverser.getSeeds(seed);
@@ -51,10 +53,13 @@ public class App {
 		BuriedTreasure buriedTreasure = new BuriedTreasure(version);
 		ChunkRand rand = new ChunkRand();
 		int rs = buriedTreasure.getSpacing();
+		if (fileWriter!=null){
+			System.out.println("Processing "+lootSeed);
+		}
 		for (long preLongSeed : preLongSeeds) {
 			long popSeed = ChunkRandomReverser.reverseDecoratorSeed(preLongSeed ^ LCG.JAVA.multiplier, 1, 3, version);
-			for (int cx = -10; cx < 10; cx++) {
-				for (int cz = -10; cz < 10; cz++) {
+			for (int cx = -range; cx <= range; cx++) {
+				for (int cz = -range; cz <= range; cz++) {
 					List<Long> decoSeed = ChunkRandomReverser.reversePopulationSeed(popSeed, cx * 16, cz * 16, version);
 					for (long s : decoSeed) {
 						// to check correct seed
@@ -62,21 +67,28 @@ public class App {
 //                        long ss = rand.nextLong();
 //                        System.out.println((ss & Mth.MASK_48) );
 						CPos p = buriedTreasure.getInRegion(s, cx / rs, cz / rs, rand);
+						Generator generator = Generators.get(buriedTreasure.getClass()).create(version);
+						generator.generate(null, cx, cz);
+						List<ChestContent> loots = buriedTreasure.getLoot(s, generator, false);
+						assert loots.size() == 1;
+						if (!loots.get(0).containsAtLeast(Items.TNT, 16)) {
+							System.err.println("Error " + loots + " " + lootSeed + " " + p);
+							System.exit(1);
+						}
 						int chunkX = cx;
 						int chunkZ = cz;
 						if (p != null) {
-							StructureSeed.getWorldSeeds(s).asStream().boxed().parallel().forEach(ws -> {
-								GenerationContext.Context context = GenerationContext.getContext(ws, OVERWORLD, version);
-								if (buriedTreasure.canSpawn(chunkX, chunkZ, context.getBiomeSource())) {
-									Generator generator = Generators.get(buriedTreasure.getClass()).create(version);
-									generator.generate(context.getGenerator(), chunkX, chunkZ);
-									List<ChestContent> loots = buriedTreasure.getLoot(s, generator, false);
-									assert loots.size() == 1;
-									if (!loots.get(0).containsAtLeast(Items.TNT, 16)) {
-										System.err.println("Error " + loots + " " + lootSeed + " " + p);
-									}
+							List<Long> worldSeeds = StructureSeed.getWorldSeeds(s).asStream().boxed().parallel().filter(ws -> {
+								BiomeSource source = BiomeSource.of(OVERWORLD, version, ws);
+								return buriedTreasure.canSpawn(chunkX, chunkZ, source);
+							}).collect(Collectors.toList());
+							for (Long worldSeed : worldSeeds) {
+								if (fileWriter != null) {
+									fileWriter.write(String.format("%d /tp @p %d ~ %d\n", worldSeed, chunkX * 16 + 9, chunkZ * 16 + 9));
+								} else {
+									System.out.printf("%d /tp @p %d ~ %d\n", worldSeed, chunkX * 16 + 9, chunkZ * 16 + 9);
 								}
-							});
+							}
 						}
 					}
 				}
@@ -104,10 +116,40 @@ public class App {
 		return lootSeeds;
 	}
 
+	public static void makeWorldSeeds(List<Long> lootSeeds) {
+		try {
+			File file = new File("worlseeds.txt");
+			if (file.createNewFile()) {
+				System.out.println("File created: " + file.getName());
+				FileWriter fileWriter = new FileWriter(file);
+				for (Long lootSeed : lootSeeds) {
+					processLootSeeds(lootSeed, fileWriter);
+				}
+			} else {
+				System.out.println("File already exists.");
+			}
+		} catch (IOException e) {
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+		}
+	}
+
 	public static void main(String[] args) {
 		List<Long> lootSeeds = makeLootSeeds();
-		for (Long lootSeed : lootSeeds) {
-			processLootSeeds(lootSeed);
-		}
+//		Long[] ls = new Long[] {
+//				202208505420139L,
+//				60774302473920L,
+//				61075554840860L,
+//				199623404144502L,
+//				135807756717058L,
+//				24925070935847L,
+//				39266834613994L,
+//				22492203707531L,
+//				64347933736715L,
+//				150850724118166L,
+//				151931532504126L,
+//				};
+//		makeWorldSeeds(Arrays.asList(ls));
+		makeWorldSeeds(lootSeeds);
 	}
 }
